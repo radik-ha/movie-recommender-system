@@ -1,63 +1,62 @@
 import pandas as pd
+import requests
 from db import run_query
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+API_KEY = os.getenv("TMDB_API_KEY")
+BASE_URL = "https://api.themoviedb.org/3"
+
+
+def clean_title(title):
+    return title.split("(")[0].replace(", The", "").strip()
+
+
+def get_tmdb_id(title):
+    try:
+        url = f"{BASE_URL}/search/movie"
+        params = {
+            "api_key": API_KEY,
+            "query": clean_title(title)
+        }
+
+        res = requests.get(url, params=params, timeout=8)
+        data = res.json()
+
+        if data.get("results"):
+            return data["results"][0]["id"]
+
+    except Exception as e:
+        print("TMDB error:", e)
+
+    return None
+
 
 def load_movies():
     df = pd.read_csv("data/movies.csv")
 
-    # Clear DB
     run_query("MATCH (n) DETACH DELETE n")
 
-    # Movies
-    movies = df.to_dict("records")
+    print("🚀 Loading movies with TMDB IDs...")
 
-    run_query("""
-    UNWIND $movies AS row
-    MERGE (m:Movie {id: row.movieId})
-    SET m.title = row.title
-    """, {"movies": movies})
-
-    # Genres
-    genre_data = []
     for _, row in df.iterrows():
-        genres = row["genres"].split("|")
-        for g in genres:
-            genre_data.append({
-                "movieId": row["movieId"],
-                "genre": g
-            })
-
-    run_query("""
-    UNWIND $data AS row
-    MATCH (m:Movie {id: row.movieId})
-    MERGE (g:Genre {name: row.genre})
-    MERGE (m)-[:BELONGS_TO]->(g)
-    """, {"data": genre_data})
-
-    print("✅ Movies loaded!")
-
-
-def load_ratings():
-    import pandas as pd
-    from db import run_query
-
-    df = pd.read_csv("data/ratings.csv")
-
-    batch_size = 5000
-
-    for i in range(0, len(df), batch_size):
-        batch = df.iloc[i:i+batch_size].to_dict("records")
+        title = row["title"]
+        tmdb_id = get_tmdb_id(title)
 
         run_query("""
-        UNWIND $ratings AS row
-        MERGE (u:User {id: row.userId})
-        MERGE (m:Movie {id: row.movieId})
-        MERGE (u)-[:RATED {rating: row.rating}]->(m)
-        """, {"ratings": batch})
+        MERGE (m:Movie {id:$id})
+        SET m.title = $title,
+            m.tmdb_id = $tmdb_id
+        """, {
+            "id": row["movieId"],
+            "title": title,
+            "tmdb_id": tmdb_id
+        })
 
-        print(f"Loaded {i + batch_size} / {len(df)}")
+    print("✅ Movies loaded with TMDB IDs!")
 
-    print("✅ Ratings loaded successfully!")
 
 if __name__ == "__main__":
     load_movies()
-    load_ratings()

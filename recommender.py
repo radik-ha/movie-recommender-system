@@ -10,16 +10,6 @@ def recommend_by_actor(actor):
     return [r["movie"] for r in result]
 
 
-# 🎯 Genre-based recommendation
-def recommend_by_genre(genre):
-    query = """
-    MATCH (m:Movie)-[:BELONGS_TO]->(g:Genre {name:$name})
-    RETURN m.name AS movie
-    """
-    result = run_query(query, {"name": genre})
-    return [r["movie"] for r in result]
-
-
 # 🔥 Similar movie (GRAPH POWER)
 def similar_movies(movie):
     query = """

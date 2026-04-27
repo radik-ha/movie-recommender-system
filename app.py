@@ -7,7 +7,7 @@ st.title("🎬 Movie Knowledge Graph Recommender")
 
 option = st.selectbox(
     "Choose Recommendation Type",
-    ["Actor", "Genre", "Similar Movie", "Users Also Liked ⭐"]
+    ["Actor", "Similar Movie", "Users Also Liked ⭐"]
 )
 
 # 🎭 Actor based
@@ -16,20 +16,6 @@ if option == "Actor":
 
     if st.button("Recommend"):
         results = recommend_by_actor(actor)
-
-        if results:
-            st.subheader("🎬 Movies:")
-            for r in results:
-                st.write("👉", r["movie"])
-        else:
-            st.warning("No results found")
-
-# 🎯 Genre based
-elif option == "Genre":
-    genre = st.text_input("Enter Genre")
-
-    if st.button("Recommend"):
-        results = recommend_by_genre(genre)
 
         if results:
             st.subheader("🎬 Movies:")
